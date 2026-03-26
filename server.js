@@ -35,7 +35,7 @@ app.get("/api/places", (req, res) => {
   });
 });
 
-// ✅ OpenStreetMap API (FIXED 🔥)
+// ✅ OpenStreetMap API (FINAL STABLE VERSION 🔥)
 app.get("/api/search", async (req, res) => {
   const location = req.query.location;
 
@@ -46,18 +46,28 @@ app.get("/api/search", async (req, res) => {
   }
 
   try {
+    // ⏳ small delay to avoid rate limit
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     const response = await axios.get(
       "https://nominatim.openstreetmap.org/search",
       {
         params: {
           q: location,
-          format: "json"
+          format: "json",
+          limit: 1
         },
         headers: {
-          "User-Agent": "travel-app"
+          "User-Agent": "travel-backend-app (rpranitha246@gmail.com)"
         }
       }
     );
+
+    if (!response.data || response.data.length === 0) {
+      return res.status(404).json({
+        error: "Location not found"
+      });
+    }
 
     res.json({
       success: true,
@@ -65,7 +75,14 @@ app.get("/api/search", async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error.message); // 🔍 debug
+    console.log("OSM ERROR:", error.response?.status || error.message);
+
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        error: "Too many requests. Please wait a few seconds and try again."
+      });
+    }
+
     res.status(500).json({
       error: "Failed to fetch location"
     });
@@ -79,6 +96,7 @@ app.use((req, res) => {
   });
 });
 
+// ✅ IMPORTANT FOR RENDER
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
